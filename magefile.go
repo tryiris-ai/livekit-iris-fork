@@ -68,16 +68,19 @@ func Build() error {
 	if err := os.MkdirAll("bin", 0755); err != nil {
 		return err
 	}
-	if err := mageutil.RunDir(context.Background(), "cmd/server", "go build -o ../../bin/livekit-server"); err != nil {
+	fmt.Println("building server...")
+	if err := mageutil.RunDir(context.Background(), "cmd/server", "go build -o ../../bin/livekit-server -tags windows"); err != nil {
 		return err
 	}
 
 	checksummer.WriteChecksum()
+	fmt.Println("build done")
 	return nil
 }
 
 // builds binary that runs on linux amd64
 func BuildLinux() error {
+	fmt.Println("building for linux")
 	mg.Deps(generateWire)
 	if !checksummer.IsChanged() {
 		fmt.Println("up to date")
@@ -221,6 +224,7 @@ func installTools(force bool) error {
 		"github.com/google/wire/cmd/wire": "latest",
 	}
 	for t, v := range tools {
+		fmt.Println("installing: ", t)
 		if err := mageutil.InstallTool(t, v, force); err != nil {
 			return err
 		}
