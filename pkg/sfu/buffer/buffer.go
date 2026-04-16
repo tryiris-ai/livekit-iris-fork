@@ -77,6 +77,7 @@ type Buffer struct {
 	bucket          *bucket.Bucket[uint64]
 	nacker          *nack.NackQueue
 	maxVideoPkts    int
+	initVideoPkts   int
 	maxAudioPkts    int
 	codecType       webrtc.RTPCodecType
 	payloadType     uint8
@@ -142,12 +143,13 @@ type Buffer struct {
 }
 
 // NewBuffer constructs a new Buffer
-func NewBuffer(ssrc uint32, maxVideoPkts, maxAudioPkts int) *Buffer {
+func NewBuffer(ssrc uint32, maxVideoPkts, initVideoPkts, maxAudioPkts int) *Buffer {
 	l := logger.GetLogger() // will be reset with correct context via SetLogger
 	b := &Buffer{
-		mediaSSRC:    ssrc,
-		maxVideoPkts: maxVideoPkts,
-		maxAudioPkts: maxAudioPkts,
+		mediaSSRC:     ssrc,
+		maxVideoPkts:  maxVideoPkts,
+		initVideoPkts: initVideoPkts,
+		maxAudioPkts:  maxAudioPkts,
 		snRangeMap:   utils.NewRangeMap[uint64, uint64](100),
 		pliThrottle:  int64(500 * time.Millisecond),
 		logger:       l.WithComponent(sutils.ComponentPub).WithComponent(sutils.ComponentSFU),
@@ -260,7 +262,12 @@ func (b *Buffer) Bind(params webrtc.RTPParameters, codec webrtc.RTPCodecCapabili
 
 	case strings.HasPrefix(b.mime, "video/"):
 		b.codecType = webrtc.RTPCodecTypeVideo
-		b.bucket = bucket.NewBucket[uint64](InitPacketBufferSizeVideo)
+		// Use initVideoPkts from config if set, otherwise fall back to default.
+		initSize := InitPacketBufferSizeVideo
+		if b.initVideoPkts > 0 {
+			initSize = b.initVideoPkts
+		}
+		b.bucket = bucket.NewBucket[uint64](initSize)
 		if b.frameRateCalculator[0] == nil {
 			if strings.EqualFold(codec.MimeType, webrtc.MimeTypeVP8) {
 				b.frameRateCalculator[0] = NewFrameRateCalculatorVP8(b.clockRate, b.logger)
