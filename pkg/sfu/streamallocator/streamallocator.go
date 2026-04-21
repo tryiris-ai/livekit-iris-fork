@@ -400,8 +400,6 @@ func (s *StreamAllocator) OnREMB(downTrack *sfu.DownTrack, remb *rtcp.ReceiverEs
 		}
 
 		// try to lock to track which is sending this update
-		downTrackSSRC := track.DownTrack().SSRC()
-		downTrackSSRCRTX := track.DownTrack().SSRCRTX()
 		for _, ssrc := range remb.SSRCs {
 			if ssrc == 0 {
 				continue
@@ -1065,6 +1063,12 @@ func (s *StreamAllocator) maybeStopProbe() {
 func (s *StreamAllocator) maybeBoostDeficientTracks() {
 	availableChannelCapacity := s.getAvailableHeadroom(false)
 	if availableChannelCapacity <= 0 {
+		s.params.Logger.Infow(
+			"stream allocator: no available headroom to boost deficient tracks",
+			"committedChannelCapacity", s.committedChannelCapacity,
+			"availableChannelCapacity", availableChannelCapacity,
+			"expectedBandwidthUsage", s.getExpectedBandwidthUsage(),
+		)
 		return
 	}
 
